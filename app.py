@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -69,19 +69,17 @@ def vr_interface():
 def vr_assets(filename):
     """Serve VR assets"""
     try:
-        asset_path = os.path.join('assets', filename)
-        with open(asset_path, 'r') as f:
-            content = f.read()
-        
-        # Set appropriate content type
-        if filename.endswith('.css'):
-            return content, 200, {'Content-Type': 'text/css'}
-        elif filename.endswith('.js'):
-            return content, 200, {'Content-Type': 'application/javascript'}
-        else:
-            return content
+        return send_from_directory('assets', filename)
     except FileNotFoundError:
         return "Asset not found", 404
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    """Serve uploaded files for image comparison"""
+    try:
+        return send_from_directory('uploads', filename)
+    except FileNotFoundError:
+        return "File not found", 404
 
 @app.route('/analyze', methods=['POST'])
 def analyze_pcb():
@@ -129,12 +127,9 @@ def analyze_pcb():
         # Perform defect detection
         results = defect_detector.analyze_pcb(reference_img, test_img, analysis_id)
         
-        # Clean up uploaded files
-        try:
-            os.remove(reference_path)
-            os.remove(test_path)
-        except:
-            pass
+        # Add image URLs for side-by-side comparison
+        results['reference_image_url'] = url_for('uploaded_file', filename=reference_filename)
+        results['test_image_url'] = url_for('uploaded_file', filename=test_filename)
         
         return render_template('results.html', results=results)
         

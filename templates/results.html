@@ -66,6 +66,49 @@
                     </div>
                 {% endif %}
                 
+                <!-- Side-by-Side Image Comparison -->
+                {% if results.reference_image_url and results.test_image_url %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-images me-2"></i>Image Comparison</h5>
+                        <div class="card bg-dark">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="image-comparison-container">
+                                            <h6 class="text-success"><i class="fas fa-check-circle me-1"></i>Reference PCB (Perfect)</h6>
+                                            <div class="position-relative">
+                                                <img src="{{ results.reference_image_url }}" class="img-fluid rounded border" alt="Reference PCB" id="reference-image">
+                                                <canvas id="reference-overlay" class="position-absolute top-0 start-0"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="image-comparison-container">
+                                            <h6 class="text-warning"><i class="fas fa-search me-1"></i>Test PCB (Under Analysis)</h6>
+                                            <div class="position-relative">
+                                                <img src="{{ results.test_image_url }}" class="img-fluid rounded border" alt="Test PCB" id="test-image">
+                                                <canvas id="test-overlay" class="position-absolute top-0 start-0"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary" onclick="toggleDefectMarkers()" id="marker-toggle">
+                                            <i class="fas fa-eye me-1"></i>Show Defect Markers
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="resetImageView()">
+                                            <i class="fas fa-refresh me-1"></i>Reset View
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5><i class="fas fa-list me-2"></i>Component Details</h5>
                     <div>
@@ -203,8 +246,10 @@
 
 {% block scripts %}
 <script>
+let markersVisible = false;
+const resultsData = JSON.parse(document.getElementById('results-data').textContent);
+
 function exportResults() {
-    const resultsData = JSON.parse(document.getElementById('results-data').textContent);
     const dataStr = JSON.stringify(resultsData, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
     
@@ -213,5 +258,245 @@ function exportResults() {
     link.download = `pcb_analysis_${resultsData.analysis_id}.json`;
     link.click();
 }
+
+function toggleDefectMarkers() {
+    markersVisible = !markersVisible;
+    const button = document.getElementById('marker-toggle');
+    
+    if (markersVisible) {
+        button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Defect Markers';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-primary');
+        drawDefectMarkers();
+    } else {
+        button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Defect Markers';
+        button.classList.remove('btn-primary');
+        button.classList.add('btn-outline-primary');
+        clearDefectMarkers();
+    }
+}
+
+function drawDefectMarkers() {
+    const referenceCanvas = document.getElementById('reference-overlay');
+    const testCanvas = document.getElementById('test-overlay');
+    const referenceImg = document.getElementById('reference-image');
+    const testImg = document.getElementById('test-image');
+    
+    if (!referenceCanvas || !testCanvas || !referenceImg || !testImg) return;
+    
+    // Set canvas dimensions to match images
+    [referenceCanvas, testCanvas].forEach((canvas, index) => {
+        const img = index === 0 ? referenceImg : testImg;
+        canvas.width = img.clientWidth;
+        canvas.height = img.clientHeight;
+        canvas.style.width = img.clientWidth + 'px';
+        canvas.style.height = img.clientHeight + 'px';
+    });
+    
+    const refCtx = referenceCanvas.getContext('2d');
+    const testCtx = testCanvas.getContext('2d');
+    
+    // Scale factors to adjust coordinates to displayed image size
+    const refScaleX = referenceImg.clientWidth / referenceImg.naturalWidth;
+    const refScaleY = referenceImg.clientHeight / referenceImg.naturalHeight;
+    const testScaleX = testImg.clientWidth / testImg.naturalWidth;
+    const testScaleY = testImg.clientHeight / testImg.naturalHeight;
+    
+    resultsData.components.forEach(component => {
+        // Draw expected location on reference image (green circle)
+        if (component.expected_location) {
+            const refX = component.expected_location[0] * refScaleX;
+            const refY = component.expected_location[1] * refScaleY;
+            
+            refCtx.strokeStyle = '#28a745';
+            refCtx.fillStyle = 'rgba(40, 167, 69, 0.2)';
+            refCtx.lineWidth = 3;
+            refCtx.beginPath();
+            refCtx.arc(refX, refY, 20, 0, 2 * Math.PI);
+            refCtx.fill();
+            refCtx.stroke();
+            
+            // Add component label
+            refCtx.fillStyle = '#28a745';
+            refCtx.font = 'bold 12px Arial';
+            refCtx.fillText(component.name, refX + 25, refY - 10);
+        }
+        
+        // Draw markers on test image based on status
+        if (component.status === 'MISSING') {
+            // Red X marker for missing components
+            const refX = component.expected_location[0] * testScaleX;
+            const refY = component.expected_location[1] * testScaleY;
+            
+            testCtx.strokeStyle = '#dc3545';
+            testCtx.lineWidth = 4;
+            testCtx.beginPath();
+            testCtx.moveTo(refX - 15, refY - 15);
+            testCtx.lineTo(refX + 15, refY + 15);
+            testCtx.moveTo(refX + 15, refY - 15);
+            testCtx.lineTo(refX - 15, refY + 15);
+            testCtx.stroke();
+            
+            // Add "MISSING" label
+            testCtx.fillStyle = '#dc3545';
+            testCtx.font = 'bold 12px Arial';
+            testCtx.fillText('MISSING: ' + component.name, refX + 20, refY - 10);
+            
+        } else if (component.status === 'MISALIGNED' && component.detected_location) {
+            // Orange arrow showing misalignment
+            const expectedX = component.expected_location[0] * testScaleX;
+            const expectedY = component.expected_location[1] * testScaleY;
+            const detectedX = component.detected_location[0] * testScaleX;
+            const detectedY = component.detected_location[1] * testScaleY;
+            
+            // Draw arrow from expected to detected
+            testCtx.strokeStyle = '#ffc107';
+            testCtx.lineWidth = 3;
+            testCtx.beginPath();
+            testCtx.moveTo(expectedX, expectedY);
+            testCtx.lineTo(detectedX, detectedY);
+            testCtx.stroke();
+            
+            // Arrow head
+            const angle = Math.atan2(detectedY - expectedY, detectedX - expectedX);
+            testCtx.beginPath();
+            testCtx.moveTo(detectedX, detectedY);
+            testCtx.lineTo(detectedX - 10 * Math.cos(angle - Math.PI/6), detectedY - 10 * Math.sin(angle - Math.PI/6));
+            testCtx.moveTo(detectedX, detectedY);
+            testCtx.lineTo(detectedX - 10 * Math.cos(angle + Math.PI/6), detectedY - 10 * Math.sin(angle + Math.PI/6));
+            testCtx.stroke();
+            
+            // Circles at expected and detected positions
+            testCtx.strokeStyle = '#ffc107';
+            testCtx.fillStyle = 'rgba(255, 193, 7, 0.2)';
+            testCtx.beginPath();
+            testCtx.arc(expectedX, expectedY, 15, 0, 2 * Math.PI);
+            testCtx.fill();
+            testCtx.stroke();
+            
+            testCtx.beginPath();
+            testCtx.arc(detectedX, detectedY, 15, 0, 2 * Math.PI);
+            testCtx.fill();
+            testCtx.stroke();
+            
+            // Add label
+            testCtx.fillStyle = '#ffc107';
+            testCtx.font = 'bold 12px Arial';
+            testCtx.fillText('MISALIGNED: ' + component.name, Math.max(expectedX, detectedX) + 20, Math.min(expectedY, detectedY) - 10);
+            
+        } else if (component.status === 'OK' && component.detected_location) {
+            // Green checkmark for OK components
+            const detectedX = component.detected_location[0] * testScaleX;
+            const detectedY = component.detected_location[1] * testScaleY;
+            
+            testCtx.strokeStyle = '#28a745';
+            testCtx.fillStyle = 'rgba(40, 167, 69, 0.2)';
+            testCtx.lineWidth = 3;
+            testCtx.beginPath();
+            testCtx.arc(detectedX, detectedY, 15, 0, 2 * Math.PI);
+            testCtx.fill();
+            testCtx.stroke();
+            
+            // Checkmark
+            testCtx.strokeStyle = '#28a745';
+            testCtx.lineWidth = 3;
+            testCtx.beginPath();
+            testCtx.moveTo(detectedX - 8, detectedY);
+            testCtx.lineTo(detectedX - 2, detectedY + 6);
+            testCtx.lineTo(detectedX + 8, detectedY - 6);
+            testCtx.stroke();
+        }
+    });
+}
+
+function clearDefectMarkers() {
+    const referenceCanvas = document.getElementById('reference-overlay');
+    const testCanvas = document.getElementById('test-overlay');
+    
+    if (referenceCanvas) {
+        const refCtx = referenceCanvas.getContext('2d');
+        refCtx.clearRect(0, 0, referenceCanvas.width, referenceCanvas.height);
+    }
+    
+    if (testCanvas) {
+        const testCtx = testCanvas.getContext('2d');
+        testCtx.clearRect(0, 0, testCanvas.width, testCanvas.height);
+    }
+}
+
+function resetImageView() {
+    markersVisible = false;
+    const button = document.getElementById('marker-toggle');
+    button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Defect Markers';
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-outline-primary');
+    clearDefectMarkers();
+}
+
+// Auto-resize canvases when window resizes
+window.addEventListener('resize', function() {
+    if (markersVisible) {
+        setTimeout(drawDefectMarkers, 100);
+    }
+});
+
+// Draw markers when images load
+document.addEventListener('DOMContentLoaded', function() {
+    const referenceImg = document.getElementById('reference-image');
+    const testImg = document.getElementById('test-image');
+    
+    if (referenceImg && testImg) {
+        let imagesLoaded = 0;
+        const checkImagesLoaded = () => {
+            imagesLoaded++;
+            if (imagesLoaded === 2) {
+                // Both images loaded, set up canvases
+                setTimeout(() => {
+                    const referenceCanvas = document.getElementById('reference-overlay');
+                    const testCanvas = document.getElementById('test-overlay');
+                    if (referenceCanvas && testCanvas) {
+                        referenceCanvas.width = referenceImg.clientWidth;
+                        referenceCanvas.height = referenceImg.clientHeight;
+                        testCanvas.width = testImg.clientWidth;
+                        testCanvas.height = testImg.clientHeight;
+                    }
+                }, 100);
+            }
+        };
+        
+        if (referenceImg.complete) checkImagesLoaded();
+        else referenceImg.onload = checkImagesLoaded;
+        
+        if (testImg.complete) checkImagesLoaded();
+        else testImg.onload = checkImagesLoaded;
+    }
+});
 </script>
+
+<style>
+.image-comparison-container {
+    position: relative;
+}
+
+.image-comparison-container img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+#reference-overlay, #test-overlay {
+    pointer-events: none;
+    border-radius: 0.375rem;
+}
+
+.btn-group .btn {
+    margin-right: 0;
+}
+
+@media (max-width: 768px) {
+    .image-comparison-container {
+        margin-bottom: 2rem;
+    }
+}
+</style>
 {% endblock %}
