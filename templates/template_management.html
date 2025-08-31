@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Template Management - VRAQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-images me-2"></i>
+                    Template Management
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Upload and manage template images for component detection. These templates are used to identify components in PCB images.
+                </p>
+                
+                <form action="{{ url_for('upload_template') }}" method="post" enctype="multipart/form-data" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="template_files" class="form-label">
+                                <i class="fas fa-upload me-1"></i>
+                                Upload Template Images
+                            </label>
+                            <input type="file" class="form-control" id="template_files" name="template_files" 
+                                   accept=".png,.jpg,.jpeg,.tiff" multiple required>
+                            <div class="form-text">
+                                Select one or more template images (PNG, JPG, JPEG, TIFF). Max 10MB per file.
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-upload me-2"></i>
+                                Upload Templates
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-list me-2"></i>Current Templates</h5>
+                    <span class="badge bg-secondary">{{ templates | length }} template(s)</span>
+                </div>
+                
+                {% if templates %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-file-image me-1"></i>Template Name</th>
+                                    <th><i class="fas fa-weight-hanging me-1"></i>File Size</th>
+                                    <th><i class="fas fa-clock me-1"></i>Last Modified</th>
+                                    <th><i class="fas fa-cogs me-1"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for template in templates %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-image me-2 text-primary"></i>
+                                                <span class="fw-bold">{{ template.name }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {{ (template.size / 1024) | round(1) }} KB
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ template.modified.strftime('%Y-%m-%d %H:%M:%S') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary me-1" 
+                                                    onclick="previewTemplate('{{ template.name }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteTemplate('{{ template.name }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No templates uploaded</h5>
+                        <p class="text-muted">Upload template images to improve component detection accuracy</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Template Guidelines
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle me-2 text-success"></i>Best Practices</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-right me-2 text-primary"></i>Use high-resolution images</li>
+                            <li><i class="fas fa-arrow-right me-2 text-primary"></i>Ensure good lighting and contrast</li>
+                            <li><i class="fas fa-arrow-right me-2 text-primary"></i>Crop templates to include only the component</li>
+                            <li><i class="fas fa-arrow-right me-2 text-primary"></i>Use multiple angles for better detection</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Avoid</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-times me-2 text-danger"></i>Blurry or out-of-focus images</li>
+                            <li><i class="fas fa-times me-2 text-danger"></i>Poor lighting conditions</li>
+                            <li><i class="fas fa-times me-2 text-danger"></i>Including background noise</li>
+                            <li><i class="fas fa-times me-2 text-danger"></i>Extremely small template sizes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Preview Modal -->
+<div class="modal fade" id="templatePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>
+                    Template Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="templatePreviewImage" class="img-fluid" style="max-height: 400px;">
+                <p id="templatePreviewName" class="mt-2 text-muted"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-trash me-2"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the template <strong id="deleteTemplateName"></strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewTemplate(templateName) {
+    // In a real implementation, you would load the template image
+    // For now, we'll show a placeholder
+    document.getElementById('templatePreviewName').textContent = templateName;
+    document.getElementById('templatePreviewImage').src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UZW1wbGF0ZSBQcmV2aWV3PC90ZXh0Pjwvc3ZnPg==';
+    
+    const modal = new bootstrap.Modal(document.getElementById('templatePreviewModal'));
+    modal.show();
+}
+
+function deleteTemplate(templateName) {
+    document.getElementById('deleteTemplateName').textContent = templateName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+    
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        // In a real implementation, you would make an AJAX request to delete the template
+        alert('Template deletion would be implemented here');
+        modal.hide();
+    };
+}
+
+// File input preview
+document.getElementById('template_files').addEventListener('change', function(e) {
+    const files = e.target.files;
+    const fileNames = Array.from(files).map(file => file.name).join(', ');
+    
+    if (files.length > 0) {
+        const feedback = document.createElement('div');
+        feedback.className = 'form-text text-success';
+        feedback.innerHTML = `<i class="fas fa-check me-1"></i>Selected: ${fileNames}`;
+        
+        // Remove any existing feedback
+        const existing = this.parentNode.querySelector('.form-text.text-success');
+        if (existing) existing.remove();
+        
+        this.parentNode.appendChild(feedback);
+    }
+});
+</script>
+{% endblock %}

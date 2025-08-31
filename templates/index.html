@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}PCB Analysis - VRAQ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-microscope me-2"></i>
+                    PCB Defect Detection
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Upload a reference PCB image and a test PCB image to detect defects using advanced computer vision algorithms.
+                </p>
+                
+                <form action="{{ url_for('analyze_pcb') }}" method="post" enctype="multipart/form-data" id="analyzeForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="reference_image" class="form-label">
+                                <i class="fas fa-image me-1"></i>
+                                Reference PCB Image
+                            </label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="reference_image" name="reference_image" 
+                                       accept=".png,.jpg,.jpeg,.tiff" required>
+                                <span class="input-group-text">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                            </div>
+                            <div class="form-text">
+                                Upload the reference/good PCB image for comparison
+                            </div>
+                            <div class="mt-2">
+                                <img id="referencePreview" class="img-preview" style="display: none;">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="test_image" class="form-label">
+                                <i class="fas fa-search me-1"></i>
+                                Test PCB Image
+                            </label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="test_image" name="test_image" 
+                                       accept=".png,.jpg,.jpeg,.tiff" required>
+                                <span class="input-group-text">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                            </div>
+                            <div class="form-text">
+                                Upload the test PCB image to analyze for defects
+                            </div>
+                            <div class="mt-2">
+                                <img id="testPreview" class="img-preview" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="confidence_threshold" class="form-label">
+                                <i class="fas fa-sliders-h me-1"></i>
+                                Confidence Threshold
+                            </label>
+                            <input type="range" class="form-range" id="confidence_threshold" 
+                                   min="0.5" max="1.0" step="0.05" value="0.8">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">0.5</small>
+                                <small class="text-muted">Current: <span id="confidenceValue">0.8</span></small>
+                                <small class="text-muted">1.0</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="location_tolerance" class="form-label">
+                                <i class="fas fa-crosshairs me-1"></i>
+                                Location Tolerance (pixels)
+                            </label>
+                            <input type="range" class="form-range" id="location_tolerance" 
+                                   min="5" max="50" step="5" value="10">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">5px</small>
+                                <small class="text-muted">Current: <span id="toleranceValue">10</span>px</small>
+                                <small class="text-muted">50px</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="analyzeBtn">
+                            <i class="fas fa-play me-2"></i>
+                            Start PCB Analysis
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detection Capabilities
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-search-minus fa-2x text-danger mb-2"></i>
+                            <h6>Missing Components</h6>
+                            <p class="text-muted small">Detects components that should be present but are missing from the PCB</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-crosshairs fa-2x text-warning mb-2"></i>
+                            <h6>Misaligned Parts</h6>
+                            <p class="text-muted small">Identifies components that are not in their correct positions</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                            <h6>Quality Validation</h6>
+                            <p class="text-muted small">Confirms that components are correctly placed and assembled</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-image me-2"></i>
+                    Supported Formats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <h6>Image Formats</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-file-image me-2 text-primary"></i>PNG</li>
+                            <li><i class="fas fa-file-image me-2 text-primary"></i>JPEG/JPG</li>
+                            <li><i class="fas fa-file-image me-2 text-primary"></i>TIFF</li>
+                        </ul>
+                    </div>
+                    <div class="col-sm-6">
+                        <h6>Requirements</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-weight-hanging me-2 text-info"></i>Max size: 10MB</li>
+                            <li><i class="fas fa-expand-arrows-alt me-2 text-info"></i>Max resolution: 1920px</li>
+                            <li><i class="fas fa-palette me-2 text-info"></i>Color or grayscale</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="processingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Processing PCB Images</h5>
+                <p class="text-muted mb-0">Analyzing defects using computer vision algorithms...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Image preview functionality
+    setupImagePreview('reference_image', 'referencePreview');
+    setupImagePreview('test_image', 'testPreview');
+    
+    // Range sliders
+    setupRangeSlider('confidence_threshold', 'confidenceValue');
+    setupRangeSlider('location_tolerance', 'toleranceValue');
+    
+    // Form submission
+    document.getElementById('analyzeForm').addEventListener('submit', function() {
+        const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+        modal.show();
+    });
+});
+
+function setupImagePreview(inputId, previewId) {
+    document.getElementById(inputId).addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById(previewId);
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = 'none';
+        }
+    });
+}
+
+function setupRangeSlider(sliderId, valueId) {
+    const slider = document.getElementById(sliderId);
+    const valueSpan = document.getElementById(valueId);
+    
+    slider.addEventListener('input', function() {
+        valueSpan.textContent = this.value;
+    });
+}
+</script>
+{% endblock %}
