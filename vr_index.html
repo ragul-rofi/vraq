@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VRAQ - VR PCB Defect Detection</title>
+    <meta name="description" content="Immersive VR visualization for PCB defect analysis">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- A-Frame and Three.js -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+    
+    <!-- Custom Components -->
+    <script src="assets/js/defect-marker.js"></script>
+    <script src="assets/js/pcb-visualizer.js"></script>
+    <script src="assets/js/vraq-client.js"></script>
+    <script src="assets/js/ui-controls.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="assets/css/vr-style.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h2>Loading VRAQ VR Environment</h2>
+            <p>Initializing PCB defect visualization...</p>
+        </div>
+    </div>
+
+    <!-- VR UI Overlay -->
+    <div id="vr-ui-overlay">
+        <div id="upload-panel" class="ui-panel">
+            <h3>Upload PCB Images</h3>
+            <div class="upload-zone" id="reference-upload">
+                <input type="file" id="reference-file" accept=".png,.jpg,.jpeg,.tiff">
+                <label for="reference-file">
+                    <i class="upload-icon">📷</i>
+                    <span>Reference PCB</span>
+                </label>
+                <div class="preview" id="reference-preview"></div>
+            </div>
+            <div class="upload-zone" id="test-upload">
+                <input type="file" id="test-file" accept=".png,.jpg,.jpeg,.tiff">
+                <label for="test-file">
+                    <i class="upload-icon">🔍</i>
+                    <span>Test PCB</span>
+                </label>
+                <div class="preview" id="test-preview"></div>
+            </div>
+            <button id="analyze-btn" class="analyze-button" disabled>Start VR Analysis</button>
+            <div id="progress-bar" class="progress-bar" style="display: none;">
+                <div class="progress-fill"></div>
+                <span class="progress-text">Processing...</span>
+            </div>
+        </div>
+
+        <div id="info-panel" class="ui-panel">
+            <h3>Analysis Results</h3>
+            <div id="defect-summary">
+                <div class="stat-item">
+                    <span class="stat-value" id="ok-count">0</span>
+                    <span class="stat-label">OK</span>
+                    <div class="stat-color ok"></div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="missing-count">0</span>
+                    <span class="stat-label">Missing</span>
+                    <div class="stat-color missing"></div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="misaligned-count">0</span>
+                    <span class="stat-label">Misaligned</span>
+                    <div class="stat-color misaligned"></div>
+                </div>
+            </div>
+            <div id="selected-component-info" style="display: none;">
+                <h4>Component Details</h4>
+                <div id="component-details"></div>
+            </div>
+        </div>
+
+        <div id="control-panel" class="ui-panel">
+            <h3>VR Controls</h3>
+            <button id="reset-view-btn" class="control-button">Reset View</button>
+            <button id="toggle-markers-btn" class="control-button">Toggle Markers</button>
+            <button id="export-results-btn" class="control-button" disabled>Export Results</button>
+            <div class="control-group">
+                <label>Marker Size:</label>
+                <input type="range" id="marker-size" min="0.1" max="2" step="0.1" value="1">
+            </div>
+            <div class="control-group">
+                <label>Animation Speed:</label>
+                <input type="range" id="animation-speed" min="0.5" max="3" step="0.1" value="1">
+            </div>
+        </div>
+    </div>
+
+    <!-- A-Frame VR Scene -->
+    <a-scene 
+        id="vr-scene"
+        vr-mode-ui="enabled: true"
+        embedded
+        background="color: #0a0a0a"
+        loading-screen="enabled: false"
+        renderer="antialias: true; colorManagement: true"
+        device-orientation-permission-ui="enabled: false">
+        
+        <!-- Assets -->
+        <a-assets>
+            <!-- PCB Model Placeholder (will be generated procedurally) -->
+            <a-mixin id="defect-marker-base"
+                     geometry="primitive: sphere; radius: 0.05"
+                     animation__scale="property: scale; to: 1.2 1.2 1.2; dur: 1000; dir: alternate; loop: true; easing: easeInOutQuad"></a-mixin>
+            
+            <!-- Marker Materials -->
+            <a-mixin id="ok-marker"
+                     material="color: #4caf50; emissive: #4caf50; emissiveIntensity: 0.3; roughness: 0.1; metalness: 0.8"></a-mixin>
+            <a-mixin id="missing-marker"
+                     material="color: #f44336; emissive: #f44336; emissiveIntensity: 0.5; roughness: 0.1; metalness: 0.8"></a-mixin>
+            <a-mixin id="misaligned-marker"
+                     material="color: #ffc107; emissive: #ffc107; emissiveIntensity: 0.4; roughness: 0.1; metalness: 0.8"></a-mixin>
+        </a-assets>
+
+        <!-- Environment -->
+        <a-entity environment="preset: starry; 
+                              skyColor: #0a0a0a; 
+                              horizonColor: #1a1a2e;
+                              lighting: distant;
+                              lightPosition: 0 10 -5"></a-entity>
+
+        <!-- Lighting Setup -->
+        <a-light type="ambient" color="#404040" intensity="0.3"></a-light>
+        <a-light type="directional" 
+                 position="3 10 3" 
+                 color="#ffffff" 
+                 intensity="0.8"
+                 light="castShadow: true"
+                 shadow="type: pcf"></a-light>
+        <a-light type="point" 
+                 position="0 5 0" 
+                 color="#ffffff" 
+                 intensity="0.5"></a-light>
+
+        <!-- PCB Board Base -->
+        <a-entity id="pcb-container" position="0 1.5 -3">
+            <!-- Main PCB Board -->
+            <a-box id="pcb-board"
+                   width="4" height="0.1" depth="2.5"
+                   material="color: #2e7d32; roughness: 0.8; metalness: 0.2"
+                   shadow="cast: true; receive: true"
+                   pcb-visualizer="apiUrl: /api">
+                
+                <!-- PCB Grid Pattern -->
+                <a-entity id="pcb-grid" position="0 0.051 0">
+                    <!-- Grid lines will be added programmatically -->
+                </a-entity>
+                
+                <!-- Component Mounting Areas -->
+                <a-entity id="component-areas">
+                    <!-- Component areas will be added based on analysis -->
+                </a-entity>
+                
+                <!-- Defect Markers Container -->
+                <a-entity id="defect-markers">
+                    <!-- Defect markers will be added here dynamically -->
+                </a-entity>
+            </a-box>
+            
+            <!-- PCB Label -->
+            <a-text value="PCB Defect Analysis - VR View" 
+                    position="0 -0.3 0" 
+                    align="center" 
+                    color="#ffffff"
+                    scale="2 2 2"></a-text>
+        </a-entity>
+
+        <!-- VR Camera Rig -->
+        <a-entity id="rig" 
+                  movement-controls="fly: false; constrainToNavMesh: false"
+                  position="0 1.6 2">
+            
+            <!-- VR Camera -->
+            <a-camera id="camera"
+                      look-controls="pointerLockEnabled: true"
+                      wasd-controls="acceleration: 20"
+                      fov="60">
+                
+                <!-- Laser Pointer for VR -->
+                <a-entity laser-controls="hand: right" 
+                          raycaster="objects: .clickable; far: 30"
+                          line="color: #118A7E; opacity: 0.75"
+                          cursor="rayOrigin: mouse"></a-entity>
+                
+                <!-- Cursor for Desktop -->
+                <a-cursor geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+                          material="color: #118A7E; shader: flat"
+                          position="0 0 -1"
+                          raycaster="objects: .clickable"
+                          animation__mouseenter="property: scale; to: 1.4 1.4 1.4; startEvents: mouseenter; dur: 150"
+                          animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150"></a-cursor>
+            </a-camera>
+
+            <!-- Hand Controllers (for VR) -->
+            <a-entity id="leftHand" 
+                      hand-controls="hand: left; handModelStyle: lowPoly"
+                      laser-controls
+                      raycaster="objects: .clickable"></a-entity>
+            
+            <a-entity id="rightHand" 
+                      hand-controls="hand: right; handModelStyle: lowPoly"
+                      laser-controls
+                      raycaster="objects: .clickable"></a-entity>
+        </a-entity>
+
+        <!-- UI Panels in VR Space -->
+        <a-entity id="vr-ui-container" position="0 2.5 -2">
+            <!-- Information Display Panel -->
+            <a-plane id="vr-info-panel"
+                     position="-3 0 0"
+                     width="2.5" height="2"
+                     material="color: #1a1a2e; opacity: 0.9; transparent: true"
+                     class="clickable"
+                     text="value: Welcome to VRAQ VR\nUpload PCB images to begin analysis; 
+                           color: #ffffff; 
+                           align: center; 
+                           width: 6;
+                           wrapCount: 30">
+            </a-plane>
+
+            <!-- Control Panel -->
+            <a-plane id="vr-control-panel"
+                     position="3 0 0"
+                     width="2.5" height="2"
+                     material="color: #2e2e2e; opacity: 0.9; transparent: true"
+                     class="clickable">
+                
+                <!-- Reset Button -->
+                <a-box id="reset-button"
+                       position="0 0.5 0.01"
+                       width="1.5" height="0.3" depth="0.02"
+                       material="color: #118A7E"
+                       class="clickable"
+                       text="value: Reset View; color: #ffffff; align: center; width: 8">
+                </a-box>
+                
+                <!-- Export Button -->
+                <a-box id="export-button"
+                       position="0 0 0.01"
+                       width="1.5" height="0.3" depth="0.02"
+                       material="color: #666666"
+                       class="clickable"
+                       text="value: Export Results; color: #ffffff; align: center; width: 8">
+                </a-box>
+                
+                <!-- Toggle Markers Button -->
+                <a-box id="toggle-button"
+                       position="0 -0.5 0.01"
+                       width="1.5" height="0.3" depth="0.02"
+                       material="color: #ff9800"
+                       class="clickable"
+                       text="value: Toggle Markers; color: #ffffff; align: center; width: 8">
+                </a-box>
+            </a-plane>
+        </a-entity>
+
+        <!-- Teleportation Areas -->
+        <a-cylinder id="teleport-1" 
+                    position="2 0.01 -1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder>
+        <a-cylinder id="teleport-2" 
+                    position="-2 0.01 -1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder>
+        <a-cylinder id="teleport-3" 
+                    position="0 0.01 1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder>
+
+        <!-- Ground Plane -->
+        <a-plane position="0 0 0" 
+                 rotation="-90 0 0" 
+                 width="20" height="20" 
+                 material="color: #1a1a1a; roughness: 0.9"
+                 shadow="receive: true"></a-plane>
+    </a-scene>
+
+    <!-- VR Entry UI -->
+    <div id="vr-entry-ui" class="vr-entry">
+        <div class="entry-content">
+            <h1>VRAQ - VR PCB Analysis</h1>
+            <p>Experience PCB defect detection in immersive virtual reality</p>
+            <button id="enter-vr-btn" class="enter-vr-button">Enter VR Experience</button>
+            <button id="enter-desktop-btn" class="enter-desktop-button">Continue on Desktop</button>
+        </div>
+    </div>
+
+    <!-- Scripts Initialization -->
+    <script>
+        // Initialize VR application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('VRAQ VR Application initializing...');
+            
+            // Hide loading screen once A-Frame is ready
+            document.querySelector('a-scene').addEventListener('loaded', function() {
+                document.getElementById('loading-screen').style.display = 'none';
+                console.log('A-Frame scene loaded successfully');
+            });
+            
+            // Initialize VRAQ client
+            window.vraqClient = new VRAQClient('/api');
+            
+            // Setup UI event handlers
+            initializeVRUI();
+            
+            console.log('VRAQ VR Application ready');
+        });
+
+        function initializeVRUI() {
+            // Entry buttons
+            document.getElementById('enter-vr-btn').addEventListener('click', function() {
+                document.getElementById('vr-entry-ui').style.display = 'none';
+                document.querySelector('a-scene').enterVR();
+            });
+            
+            document.getElementById('enter-desktop-btn').addEventListener('click', function() {
+                document.getElementById('vr-entry-ui').style.display = 'none';
+            });
+            
+            // File upload handlers
+            setupFileUpload('reference-file', 'reference-preview');
+            setupFileUpload('test-file', 'test-preview');
+            
+            // Analysis button
+            document.getElementById('analyze-btn').addEventListener('click', startVRAnalysis);
+            
+            // Control buttons
+            document.getElementById('reset-view-btn').addEventListener('click', resetView);
+            document.getElementById('toggle-markers-btn').addEventListener('click', toggleMarkers);
+            document.getElementById('export-results-btn').addEventListener('click', exportResults);
+            
+            // Range controls
+            document.getElementById('marker-size').addEventListener('input', updateMarkerSize);
+            document.getElementById('animation-speed').addEventListener('input', updateAnimationSpeed);
+        }
+
+        function setupFileUpload(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                        checkAnalyzeButton();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function checkAnalyzeButton() {
+            const refFile = document.getElementById('reference-file').files[0];
+            const testFile = document.getElementById('test-file').files[0];
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            analyzeBtn.disabled = !(refFile && testFile);
+        }
+
+        async function startVRAnalysis() {
+            const refFile = document.getElementById('reference-file').files[0];
+            const testFile = document.getElementById('test-file').files[0];
+            
+            if (!refFile || !testFile) return;
+            
+            const progressBar = document.getElementById('progress-bar');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            progressBar.style.display = 'block';
+            analyzeBtn.disabled = true;
+            
+            try {
+                const results = await window.vraqClient.analyzeImages(refFile, testFile);
+                displayResults(results);
+                updateVRScene(results);
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                alert('Analysis failed: ' + error.message);
+            } finally {
+                progressBar.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResults(results) {
+            document.getElementById('ok-count').textContent = 
+                results.components.filter(c => c.status === 'OK').length;
+            document.getElementById('missing-count').textContent = 
+                results.components.filter(c => c.status === 'MISSING').length;
+            document.getElementById('misaligned-count').textContent = 
+                results.components.filter(c => c.status === 'MISALIGNED').length;
+            
+            document.getElementById('export-results-btn').disabled = false;
+        }
+
+        function updateVRScene(results) {
+            const pcbBoard = document.getElementById('pcb-board');
+            pcbBoard.setAttribute('pcb-visualizer', 'defects', results.components);
+        }
+
+        function resetView() {
+            const camera = document.getElementById('rig');
+            camera.setAttribute('position', '0 1.6 2');
+            camera.querySelector('a-camera').setAttribute('rotation', '0 0 0');
+        }
+
+        function toggleMarkers() {
+            const markers = document.getElementById('defect-markers');
+            const visible = markers.getAttribute('visible');
+            markers.setAttribute('visible', visible !== false);
+        }
+
+        function exportResults() {
+            if (window.lastAnalysisResults) {
+                const dataStr = JSON.stringify(window.lastAnalysisResults, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `vraq_analysis_${Date.now()}.json`;
+                link.click();
+            }
+        }
+
+        function updateMarkerSize(e) {
+            const size = parseFloat(e.target.value);
+            const markers = document.querySelectorAll('[defect-marker]');
+            markers.forEach(marker => {
+                marker.setAttribute('scale', `${size} ${size} ${size}`);
+            });
+        }
+
+        function updateAnimationSpeed(e) {
+            const speed = parseFloat(e.target.value);
+            const duration = 1000 / speed;
+            const markers = document.querySelectorAll('[defect-marker]');
+            markers.forEach(marker => {
+                const animation = marker.getAttribute('animation__scale');
+                if (animation) {
+                    animation.dur = duration;
+                    marker.setAttribute('animation__scale', animation);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

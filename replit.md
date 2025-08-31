@@ -13,6 +13,15 @@ Preferred communication style: Simple, everyday language.
 ### Web Framework
 The application uses Flask as the primary web framework with a traditional MVC architecture. Flask was chosen for its simplicity and rapid development capabilities, making it ideal for prototyping and small to medium-scale applications. The application follows a modular structure with separate packages for models, configuration, and templates.
 
+### VR Interface
+Added an immersive VR web application using A-Frame and Three.js that visualizes PCB defect detection results in 3D virtual reality. The VR interface includes:
+- Interactive 3D PCB model with component visualization
+- Real-time defect markers with color-coded status indicators
+- Voice commands and hand tracking support
+- Teleportation controls for navigation
+- File upload interface within VR environment
+- Live statistics and component details display
+
 ### Image Processing Pipeline
 The core image processing is handled by OpenCV through two main components:
 - **ImageProcessor**: Handles image loading, preprocessing, normalization, and format conversion

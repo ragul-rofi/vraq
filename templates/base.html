@@ -33,6 +33,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'vr_interface' %}active{% endif %}" href="{{ url_for('vr_interface') }}" target="_blank">
+                            <i class="fas fa-cube me-1"></i>
+                            VR View
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('health_check') }}" target="_blank">
                             <i class="fas fa-heartbeat me-1"></i>
                             Health

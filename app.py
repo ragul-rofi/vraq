@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 import cv2
@@ -24,6 +25,15 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "vraq-dev-secret-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Enable CORS for VR frontend
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
 # Load configuration
 config = Config()
 app.config.update(config.get_config())
@@ -45,6 +55,33 @@ def allowed_file(filename):
 def index():
     """Main page for PCB defect detection"""
     return render_template('index.html')
+
+@app.route('/vr')
+def vr_interface():
+    """VR interface for immersive PCB defect visualization"""
+    try:
+        with open('vr_index.html', 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "VR interface not found", 404
+
+@app.route('/assets/<path:filename>')
+def vr_assets(filename):
+    """Serve VR assets"""
+    try:
+        asset_path = os.path.join('assets', filename)
+        with open(asset_path, 'r') as f:
+            content = f.read()
+        
+        # Set appropriate content type
+        if filename.endswith('.css'):
+            return content, 200, {'Content-Type': 'text/css'}
+        elif filename.endswith('.js'):
+            return content, 200, {'Content-Type': 'application/javascript'}
+        else:
+            return content
+    except FileNotFoundError:
+        return "Asset not found", 404
 
 @app.route('/analyze', methods=['POST'])
 def analyze_pcb():
@@ -135,7 +172,7 @@ def upload_template():
         uploaded_count = 0
         
         for file in files:
-            if file.filename != '' and allowed_file(file.filename):
+            if file.filename and file.filename != '' and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(config.TEMPLATE_DIR, filename)
                 file.save(file_path)
@@ -189,6 +226,58 @@ def api_analyze():
         
     except Exception as e:
         logger.error(f"API Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/templates', methods=['GET'])
+def api_get_templates():
+    """API endpoint to get list of templates"""
+    try:
+        templates = []
+        template_dir = Path(config.TEMPLATE_DIR)
+        
+        if template_dir.exists():
+            for template_file in template_dir.glob('*'):
+                if template_file.is_file() and allowed_file(template_file.name):
+                    templates.append({
+                        'name': template_file.name,
+                        'size': template_file.stat().st_size,
+                        'modified': datetime.fromtimestamp(template_file.stat().st_mtime).isoformat()
+                    })
+        
+        return jsonify({
+            'templates': templates,
+            'count': len(templates)
+        })
+        
+    except Exception as e:
+        logger.error(f"API Error getting templates: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/upload_template', methods=['POST'])
+def api_upload_template():
+    """API endpoint for template upload"""
+    try:
+        if 'template_files' not in request.files:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        files = request.files.getlist('template_files')
+        uploaded_files = []
+        
+        for file in files:
+            if file.filename and file.filename != '' and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(config.TEMPLATE_DIR, filename)
+                file.save(file_path)
+                uploaded_files.append(filename)
+        
+        return jsonify({
+            'uploaded_files': uploaded_files,
+            'count': len(uploaded_files),
+            'message': f'Successfully uploaded {len(uploaded_files)} template(s)'
+        })
+        
+    except Exception as e:
+        logger.error(f"API Error uploading templates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
