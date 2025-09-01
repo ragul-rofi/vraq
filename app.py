@@ -60,7 +60,7 @@ def index():
 def vr_interface():
     """VR interface for immersive PCB defect visualization"""
     try:
-        with open('vr_index.html', 'r') as f:
+        with open('vr_index.html', 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
         return "VR interface not found", 404
