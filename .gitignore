@@ -1,0 +1,16 @@
+# Replit-specific
+.replit
+replit.md
+.local/
+attached_assets/
+assets/
+reference_templates/
+uv.lock
+pyproject.toml
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
