@@ -93,7 +93,7 @@
             </div>
             <div class="control-group">
                 <label>Animation Speed:</label>
-                <input type="range" id="animation-speed" min="0.5" max="3" step="0.1" value="1">
+                <input type="range" id="animation-speed" min="0.5" max="3" step="0.2" value="1">
             </div>
         </div>
     </div>
@@ -171,10 +171,11 @@
             
             <!-- PCB Label -->
             <a-text value="PCB Defect Analysis - VR View" 
-                    position="0 -0.3 0" 
+                    position="0 3.0 1.5" 
                     align="center" 
                     color="#ffffff"
-                    scale="2 2 2"></a-text>
+                    scale="2 2 2"
+                        > </a-text>
         </a-entity>
 
         <!-- VR Camera Rig -->
@@ -186,9 +187,9 @@
             
             <!-- VR Camera -->
             <a-camera id="camera" 
-                look-controls="pointerLockEnabled: true" 
-                wasd-controls="fly: true; 
-                acceleration: 20" fov="60">
+            look-controls="pointerLockEnabled: true" 
+            wasd-controls="fly: true; 
+            acceleration: 20" fov="60">
                 
                 <!-- Laser Pointer for VR -->
                 <a-entity laser-controls="hand: right" 
@@ -231,14 +232,15 @@
                                 align: center;
                                 width: 3.0;        
                                 wrapCount: 28" 
-                        position="0 0 0.02">
+                                position="0 0 0.02"
+                                radius="1.5">
                 </a-entity>
             </a-plane>
 
             <!-- Control Panel -->
             <a-plane id="vr-control-panel"
                     position="3 0 0"
-                    width="2.5" height="2"
+                    width="2.5" height="2" 
                     material="color: #2e2e2e; opacity: 0.9; transparent: true">
 
                 <!-- Reset Button -->

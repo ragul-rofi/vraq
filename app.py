@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Create Flask app
-app = Flask(__name__, static_folder='assets', static_url_path='/assets')
+app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "vraq-dev-secret-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
@@ -65,13 +65,13 @@ def vr_interface():
     except FileNotFoundError:
         return "VR interface not found", 404
 
-# @app.route('/assets/<path:filename>')
-# def vr_assets(filename):
-#     """Serve VR assets"""
-#     try:
-#         return send_from_directory('assets', filename)
-#     except FileNotFoundError:
-#         return "Asset not found", 404
+@app.route('/assets/<path:filename>')
+def vr_assets(filename):
+    """Serve VR assets"""
+    try:
+        return send_from_directory('assets', filename)
+    except FileNotFoundError:
+        return "Asset not found", 404
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
