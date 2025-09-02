@@ -67,7 +67,7 @@ def vr_interface():
 
 @app.route('/assets/<path:filename>')
 def vr_assets(filename):
-    """Serve VR assets"""
+    """Serve VR assets from the assets folder"""
     try:
         return send_from_directory('assets', filename)
     except FileNotFoundError:
