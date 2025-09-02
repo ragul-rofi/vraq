@@ -154,9 +154,9 @@
                    pcb-visualizer="apiUrl: /api">
                 
                 <!-- PCB Grid Pattern -->
-                <a-entity id="pcb-grid" position="0 0.051 0">
+                <!-- <a-entity id="pcb-grid" position="0 0.051 0"> -->
                     <!-- Grid lines will be added programmatically -->
-                </a-entity>
+                <!-- </a-entity> -->
                 
                 <!-- Component Mounting Areas -->
                 <a-entity id="component-areas">
@@ -178,15 +178,17 @@
         </a-entity>
 
         <!-- VR Camera Rig -->
+        
         <a-entity id="rig" 
-                  movement-controls="fly: false; constrainToNavMesh: false"
-                  position="0 1.6 2">
+                movement-controls="fly: true; 
+                acceleration: 50" 
+                position="0 1.6 2">
             
             <!-- VR Camera -->
-            <a-camera id="camera"
-                      look-controls="pointerLockEnabled: true"
-                      wasd-controls="acceleration: 20"
-                      fov="60">
+            <a-camera id="camera" 
+                look-controls="pointerLockEnabled: true" 
+                wasd-controls="fly: true; 
+                acceleration: 20" fov="60">
                 
                 <!-- Laser Pointer for VR -->
                 <a-entity laser-controls="hand: right" 
@@ -219,55 +221,63 @@
         <a-entity id="vr-ui-container" position="0 2.5 -2">
             <!-- Information Display Panel -->
             <a-plane id="vr-info-panel"
-                     position="-3 0 0"
-                     width="2.5" height="2"
-                     material="color: #1a1a2e; opacity: 0.9; transparent: true"
-                     class="clickable"
-                     text="value: Welcome to VRAQ VR\nUpload PCB images to begin analysis; 
-                           color: #ffffff; 
-                           align: center; 
-                           width: 6;
-                           wrapCount: 30">
+                    position="-3 0 0"
+                    width="2.5" height="2"
+                    material="color: #1a1a2e; opacity: 0.9; transparent: true">
+                
+                <!-- Text as child, wrapped neatly -->
+                <a-entity text="value: Welcome to VRAQ\nUpload PCB images to begin analysis;
+                                color: #ffffff;
+                                align: center;
+                                width: 3.0;        
+                                wrapCount: 28" 
+                        position="0 0 0.02">
+                </a-entity>
             </a-plane>
 
             <!-- Control Panel -->
             <a-plane id="vr-control-panel"
-                     position="3 0 0"
-                     width="2.5" height="2"
-                     material="color: #2e2e2e; opacity: 0.9; transparent: true"
-                     class="clickable">
-                
+                    position="3 0 0"
+                    width="2.5" height="2"
+                    material="color: #2e2e2e; opacity: 0.9; transparent: true">
+
                 <!-- Reset Button -->
-                <a-box id="reset-button"
-                       position="0 0.5 0.01"
-                       width="1.5" height="0.3" depth="0.02"
-                       material="color: #118A7E"
-                       class="clickable"
-                       text="value: Reset View; color: #ffffff; align: center; width: 8">
-                </a-box>
-                
+                <a-entity class="clickable" position="0 0.5 0.01">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #118A7E"></a-box>
+                    <a-text value="Reset View"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
+
                 <!-- Export Button -->
-                <a-box id="export-button"
-                       position="0 0 0.01"
-                       width="1.5" height="0.3" depth="0.02"
-                       material="color: #666666"
-                       class="clickable"
-                       text="value: Export Results; color: #ffffff; align: center; width: 8">
-                </a-box>
-                
+                <a-entity class="clickable" position="0 0 0.01">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #666666"></a-box>
+                    <a-text value="Export Results"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
+
                 <!-- Toggle Markers Button -->
-                <a-box id="toggle-button"
-                       position="0 -0.5 0.01"
-                       width="1.5" height="0.3" depth="0.02"
-                       material="color: #ff9800"
-                       class="clickable"
-                       text="value: Toggle Markers; color: #ffffff; align: center; width: 8">
-                </a-box>
+                <a-entity class="clickable" position="0 -0.5 0.01">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #ff9800"></a-box>
+                    <a-text value="Toggle Markers"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
             </a-plane>
         </a-entity>
 
         <!-- Teleportation Areas -->
-        <a-cylinder id="teleport-1" 
+        <!-- <a-cylinder id="teleport-1" 
                     position="2 0.01 -1" 
                     radius="0.5" height="0.02" 
                     material="color: #118A7E; opacity: 0.6"
@@ -281,7 +291,7 @@
                     position="0 0.01 1" 
                     radius="0.5" height="0.02" 
                     material="color: #118A7E; opacity: 0.6"
-                    class="clickable teleport-area"></a-cylinder>
+                    class="clickable teleport-area"></a-cylinder> -->
 
         <!-- Ground Plane -->
         <a-plane position="0 0 0" 
