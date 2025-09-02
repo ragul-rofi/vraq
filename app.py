@@ -59,11 +59,7 @@ def index():
 @app.route('/vr')
 def vr_interface():
     """VR interface for immersive PCB defect visualization"""
-    try:
-        with open('vr_index.html', 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "VR interface not found", 404
+    return render_template('vr_index.html')
 
 @app.route('/assets/<path:filename>')
 def vr_assets(filename):
