@@ -27,7 +27,7 @@
     <script src="https://cdn.jsdelivr.net/npm/aframe-super-hands-component@3.1.0/dist/super-hands.min.js"></script>
     <script src="https://unpkg.com/aframe-teleport-controls@0.3.0/dist/aframe-teleport-controls.min.js"></script>
 
-
+    <script src="https://rawgit.com/chenzlabs/gearvr-controls/master/dist/aframe-gearvr-controls-component.min.js"></script>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -134,7 +134,7 @@
         </a-assets>
 
         <!-- Environment -->
-        <a-entity environment="preset: starry; 
+        <a-entity environment="preset: goland; 
                               skyColor: #0a0a0a; 
                               horizonColor: #1a1a2e;
                               lighting: distant;
@@ -159,12 +159,13 @@
             <a-box id="pcb-board"
                    width="4" height="0.1" depth="2.5"
                    material="color: #2e7d32; roughness: 0.8; metalness: 0.2"
-                   shadow="cast: true; receive: true"
-                   pcb-visualizer="apiUrl: /api">
+                   shadow="cast: true; receive: false"
+                   pcb-visualizer="apiUrl: /api/analyze"
+                   rotation="35 0 0">
                 
                 <!-- PCB Grid Pattern -->
                 <a-entity id="pcb-grid" position="0 0.051 0">
-                    Grid lines will be added programmatically
+                    <!-- Grid lines will be added programmatically -->
                 </a-entity>
                 
                 <!-- Component Mounting Areas -->
@@ -188,68 +189,50 @@
         </a-entity>
 
          <!-- VR Camera Rig -->
-        <a-entity id="rig" 
-                movement-controls="fly: true; 
-                acceleration: 50" 
-                position="0 1.6 2">
-            
-            <!-- VR Camera -->
-            <a-camera id="camera" 
-            look-controls="pointerLockEnabled: true" 
-            wasd-controls="fly: true; 
-            acceleration: 20" fov="60">
-                
-                <!-- Laser Pointer for VR -->
-                <a-entity laser-controls="hand: right" 
-                          raycaster="objects: .clickable; far: 30"
-                          line="color: #118A7E; opacity: 0.75"
-                          cursor="rayOrigin: mouse"></a-entity>
-                
-                <!-- Cursor for Desktop -->
-                <a-cursor geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-                          material="color: #118A7E; shader: flat"
-                          position="0 0 -1"
-                          raycaster="objects: .clickable"
-                          animation__mouseenter="property: scale; to: 1.4 1.4 1.4; startEvents: mouseenter; dur: 150"
-                          animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150"></a-cursor>
-            </a-camera>
+<a-entity id="rig" 
+          movement-controls="fly: true; acceleration: 50" 
+          position="0 1.6 2"
+          auto-detect-controllers> <!-- Auto-detect controllers -->
 
-            <!-- Hand Controllers (for VR) - Updated for Meta Quest -->
-            <a-entity id="leftHand" 
-                      oculus-touch-controls="hand: left"
-                      teleport-controls="cameraRig: #rig; teleportOrigin: #camera; button: trigger; 
-                      type: parabolic; collisionEntities: .ground; hitColor: #118A7E; 
-                      landingNormal: 0 1 0"
-                      laser-controls="hand: left"
-                      raycaster="objects: .clickable; far: 30"
-                      super-hands="colliderEvent: raycaster-intersection; 
-                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
-                      colliderEndEventProperty: els">
-                <a-entity class="controller-cursor"
-                          cursor="fuse: false; rayOrigin: entity"
-                          raycaster="far: 30; objects: .clickable"
-                          position="0 0 -0.5"
-                          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
-                          material="color: #118A7E; shader: flat">
-                </a-entity>
-            </a-entity>
-            
-            <a-entity id="rightHand" 
-                      oculus-touch-controls="hand: right"
-                      laser-controls="hand: right"
-                      raycaster="objects: .clickable; far: 30"
-                      super-hands="colliderEvent: raycaster-intersection; 
-                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
-                      colliderEndEventProperty: els">
-                <a-entity class="controller-cursor"
-                          cursor="fuse: false; rayOrigin: entity"
-                          raycaster="far: 30; objects: .clickable"
-                          position="0 0 -0.5"
-                          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
-                          material="color: #118A7E; shader: flat">
-                </a-entity>
-            </a-entity>
+    <!-- VR Camera -->
+    <a-camera id="camera" 
+              look-controls="pointerLockEnabled: true" 
+              wasd-controls="fly: true; acceleration: 20" 
+              fov="60">
+
+        <!-- Laser Pointer for VR -->
+        <a-entity laser-controls="hand: right" 
+                  raycaster="objects: .clickable; far: 30"
+                  line="color: #118A7E; opacity: 0.75"
+                  cursor="rayOrigin: mouse"></a-entity>
+
+        <!-- Cursor for Desktop -->
+        <a-cursor geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+                  material="color: #118A7E; shader: flat"
+                  position="0 0 -1"
+                  raycaster="objects: .clickable"
+                  animation__mouseenter="property: scale; to: 1.4 1.4 1.4; startEvents: mouseenter; dur: 150"
+                  animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150">
+        </a-cursor>
+    </a-camera>
+
+    <!-- Hand Controllers (auto-detected) -->
+    <a-entity class="hand-controller"
+              super-hands="colliderEvent: raycaster-intersection; 
+                           colliderEventProperty: els; 
+                           colliderEndEvent: raycaster-intersection-cleared; 
+                           colliderEndEventProperty: els">
+        <a-entity class="controller-cursor"
+                  cursor="fuse: false; rayOrigin: entity"
+                  raycaster="far: 30; objects: .clickable"
+                  position="0 0 -0.5"
+                  geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+                  material="color: #118A7E; shader: flat">
         </a-entity>
+    </a-entity>
+
+</a-entity>
+
         
 
         <!-- UI Panels in VR Space -->
@@ -262,7 +245,7 @@
                 
                 <!-- Text as child, wrapped neatly -->
                 <a-entity text="value: Welcome to VRAQ\nUpload PCB images to begin analysis;
-                                color: #ffffff;
+                                color: #ff9800;
                                 align: center;
                                 width: 3.0;        
                                 wrapCount: 28" 

@@ -77,6 +77,16 @@ def uploaded_file(filename):
     except FileNotFoundError:
         return "File not found", 404
 
+
+
+@app.route('/api', methods=['GET'])
+def api_root():
+    return jsonify({
+        'message': 'VRAQ API Root',
+        'endpoints': ['/api/analyze', '/api/templates', '/api/upload_template']
+    })
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze_pcb():
     """Analyze PCB for defects"""
