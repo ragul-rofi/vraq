@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vr-style.css') }}">
 
 
+    	
+    <!-- Additional A-Frame components for better controller support -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe-super-hands-component@3.1.0/dist/super-hands.min.js"></script>
+    <script src="https://unpkg.com/aframe-teleport-controls@0.3.0/dist/aframe-teleport-controls.min.js"></script>
+
+
 </head>
 <body>
     <!-- Loading Screen -->
@@ -181,8 +187,7 @@
                         > </a-text>
         </a-entity>
 
-        <!-- VR Camera Rig -->
-        
+         <!-- VR Camera Rig -->
         <a-entity id="rig" 
                 movement-controls="fly: true; 
                 acceleration: 50" 
@@ -209,17 +214,43 @@
                           animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150"></a-cursor>
             </a-camera>
 
-            <!-- Hand Controllers (for VR) -->
+            <!-- Hand Controllers (for VR) - Updated for Meta Quest -->
             <a-entity id="leftHand" 
-                      hand-controls="hand: left; handModelStyle: lowPoly"
-                      laser-controls
-                      raycaster="objects: .clickable"></a-entity>
+                      oculus-touch-controls="hand: left"
+                      teleport-controls="cameraRig: #rig; teleportOrigin: #camera; button: trigger; 
+                      type: parabolic; collisionEntities: .ground; hitColor: #118A7E; 
+                      landingNormal: 0 1 0"
+                      laser-controls="hand: left"
+                      raycaster="objects: .clickable; far: 30"
+                      super-hands="colliderEvent: raycaster-intersection; 
+                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
+                      colliderEndEventProperty: els">
+                <a-entity class="controller-cursor"
+                          cursor="fuse: false; rayOrigin: entity"
+                          raycaster="far: 30; objects: .clickable"
+                          position="0 0 -0.5"
+                          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+                          material="color: #118A7E; shader: flat">
+                </a-entity>
+            </a-entity>
             
             <a-entity id="rightHand" 
-                      hand-controls="hand: right; handModelStyle: lowPoly"
-                      laser-controls
-                      raycaster="objects: .clickable"></a-entity>
+                      oculus-touch-controls="hand: right"
+                      laser-controls="hand: right"
+                      raycaster="objects: .clickable; far: 30"
+                      super-hands="colliderEvent: raycaster-intersection; 
+                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
+                      colliderEndEventProperty: els">
+                <a-entity class="controller-cursor"
+                          cursor="fuse: false; rayOrigin: entity"
+                          raycaster="far: 30; objects: .clickable"
+                          position="0 0 -0.5"
+                          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+                          material="color: #118A7E; shader: flat">
+                </a-entity>
+            </a-entity>
         </a-entity>
+        
 
         <!-- UI Panels in VR Space -->
         <a-entity id="vr-ui-container" position="0 2.5 -2">
@@ -247,7 +278,7 @@
                     material="color: #2e2e2e; opacity: 0.9; transparent: true">
 
                 <!-- Reset Button -->
-                <a-entity class="clickable" position="0 0.5 0.01">
+                <a-entity class="clickable" position="0 0.5 0.01" id="vr-reset-btn">
                     <a-box width="1.5" height="0.3" depth="0.02"
                         material="color: #118A7E"></a-box>
                     <a-text value="Reset View"
@@ -258,7 +289,7 @@
                 </a-entity>
 
                 <!-- Export Button -->
-                <a-entity class="clickable" position="0 0 0.01">
+                <a-entity class="clickable" position="0 0 0.01" id="vr-export-btn">
                     <a-box width="1.5" height="0.3" depth="0.02"
                         material="color: #666666"></a-box>
                     <a-text value="Export Results"
@@ -269,7 +300,7 @@
                 </a-entity>
 
                 <!-- Toggle Markers Button -->
-                <a-entity class="clickable" position="0 -0.5 0.01">
+                <a-entity class="clickable" position="0 -0.5 0.01"  id="vr-toggle-markers-btn">
                     <a-box width="1.5" height="0.3" depth="0.02"
                         material="color: #ff9800"></a-box>
                     <a-text value="Toggle Markers"
@@ -303,7 +334,8 @@
                  rotation="-90 0 0" 
                  width="20" height="20" 
                  material="color: #1a1a1a; roughness: 0.9"
-                 shadow="receive: true"></a-plane>
+                 shadow="receive: true"
+                 class="ground"></a-plane>
     </a-scene>
 
     <!-- VR Entry UI -->
@@ -327,6 +359,9 @@
                 document.getElementById('loading-screen').style.display = 'none';
                 console.log('A-Frame scene loaded successfully');
             });
+
+            // Setup VR controller event listeners
+                setupVRControllerEvents();
             
             // Initialize VRAQ client
             window.vraqClient = new VRAQClient('/api');
@@ -336,6 +371,42 @@
             
             console.log('VRAQ VR Application ready');
         });
+        
+        	
+        function setupVRControllerEvents() {            // Add event listeners for VR controller interactions
+            const vrResetBtn = document.getElementById('vr-reset-btn');
+            const vrExportBtn = document.getElementById('vr-export-btn');
+            const vrToggleMarkersBtn = document.getElementById('vr-toggle-markers-btn');
+            
+            // Add click events for VR buttons
+            if (vrResetBtn) {
+                vrResetBtn.addEventListener('click', resetView);
+            }
+            
+            if (vrExportBtn) {
+                vrExportBtn.addEventListener('click', exportResults);
+            }
+            
+            if (vrToggleMarkersBtn) {
+                vrToggleMarkersBtn.addEventListener('click', toggleMarkers);
+            }
+            
+            // Add controller model loaded event
+            const leftController = document.getElementById('leftHand');
+            const rightController = document.getElementById('rightHand');
+            
+            if (leftController) {
+                leftController.addEventListener('model-loaded', function() {
+                    console.log('Left controller model loaded');
+                });
+            }
+            
+            if (rightController) {
+                rightController.addEventListener('model-loaded', function() {
+                    console.log('Right controller model loaded');
+                });
+            }
+        }
 
         function initializeVRUI() {
             // Entry buttons
