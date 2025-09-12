@@ -87,7 +87,7 @@
                                         <div class="image-comparison-container">
                                             <h6 class="text-warning"><i class="fas fa-search me-1"></i>Test PCB (Under Analysis)</h6>
                                             <div class="position-relative">
-                                                <img src="{{ results.test_image_url }}" class="img-fluid rounded border" alt="Test PCB" id="test-image">
+                                                <img src="{{ results.test_image_url }}" class="img-fluid rounded border test-image-bw" alt="Test PCB" id="test-image">
                                                 <canvas id="test-overlay" class="position-absolute top-0 start-0"></canvas>
                                             </div>
                                         </div>
@@ -244,6 +244,15 @@
 </script>
 {% endblock %}
 
+{% block styles %}
+<style>
+.test-image-bw {
+    filter: grayscale(100%) contrast(110%) brightness(95%);
+    background: #f1f1f1;
+}
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
 let markersVisible = false;
@@ -309,7 +318,7 @@ function drawDefectMarkers() {
             const refY = component.expected_location[1] * refScaleY;
             
             refCtx.strokeStyle = '#28a745';
-            refCtx.fillStyle = 'rgba(40, 167, 69, 0.2)';
+            refCtx.fillStyle = 'rgba(40, 167, 69, 1)';
             refCtx.lineWidth = 3;
             refCtx.beginPath();
             refCtx.arc(refX, refY, 20, 0, 2 * Math.PI);
@@ -324,86 +333,123 @@ function drawDefectMarkers() {
         
         // Draw markers on test image based on status
         if (component.status === 'MISSING') {
-            // Red X marker for missing components
+            // Dark red X marker for missing components with background
             const refX = component.expected_location[0] * testScaleX;
             const refY = component.expected_location[1] * testScaleY;
             
-            testCtx.strokeStyle = '#dc3545';
-            testCtx.lineWidth = 4;
+            // Draw white background circle for better contrast
+            testCtx.fillStyle = 'red';
             testCtx.beginPath();
-            testCtx.moveTo(refX - 15, refY - 15);
-            testCtx.lineTo(refX + 15, refY + 15);
-            testCtx.moveTo(refX + 15, refY - 15);
-            testCtx.lineTo(refX - 15, refY + 15);
-            testCtx.stroke();
+            testCtx.arc(refX, refY, 25, 0, 2 * Math.PI);
+            testCtx.fill();
             
-            // Add "MISSING" label
-            testCtx.fillStyle = '#dc3545';
-            testCtx.font = 'bold 12px Arial';
-            testCtx.fillText('MISSING: ' + component.name, refX + 20, refY - 10);
+            // // Draw thick dark red X
+            // testCtx.strokeStyle = '#cc0000';
+            // testCtx.lineWidth = 6;
+            // testCtx.lineCap = 'round';
+            // testCtx.beginPath();
+            // testCtx.moveTo(refX - 18, refY - 18);
+            // testCtx.lineTo(refX + 18, refY + 18);
+            // testCtx.moveTo(refX + 18, refY - 18);
+            // testCtx.lineTo(refX - 18, refY + 18);
+            // testCtx.stroke();
+            
+            // Add dark background for label
+            testCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            testCtx.fillRect(refX + 25, refY - 20, 140, 20);
+            
+            // Add white text label
+            testCtx.fillStyle = 'white';
+            testCtx.font = 'bold 14px Arial';
+            testCtx.fillText('MISSING: ' + component.name, refX + 30, refY - 5);
             
         } else if (component.status === 'MISALIGNED' && component.detected_location) {
-            // Orange arrow showing misalignment
+            // Dark orange arrow showing misalignment with better contrast
             const expectedX = component.expected_location[0] * testScaleX;
             const expectedY = component.expected_location[1] * testScaleY;
             const detectedX = component.detected_location[0] * testScaleX;
             const detectedY = component.detected_location[1] * testScaleY;
             
-            // Draw arrow from expected to detected
-            testCtx.strokeStyle = '#ffc107';
-            testCtx.lineWidth = 3;
+            // Draw white background circles for better visibility
+            testCtx.fillStyle = 'white';
+            testCtx.beginPath();
+            testCtx.arc(expectedX, expectedY, 20, 0, 2 * Math.PI);
+            testCtx.fill();
+            testCtx.beginPath();
+            testCtx.arc(detectedX, detectedY, 20, 0, 2 * Math.PI);
+            testCtx.fill();
+            
+            // Draw thick dark orange arrow from expected to detected
+            testCtx.strokeStyle = '#e67e00';
+            testCtx.lineWidth = 5;
+            testCtx.lineCap = 'round';
             testCtx.beginPath();
             testCtx.moveTo(expectedX, expectedY);
             testCtx.lineTo(detectedX, detectedY);
             testCtx.stroke();
             
-            // Arrow head
+            // Arrow head (bigger and more visible)
             const angle = Math.atan2(detectedY - expectedY, detectedX - expectedX);
             testCtx.beginPath();
             testCtx.moveTo(detectedX, detectedY);
-            testCtx.lineTo(detectedX - 10 * Math.cos(angle - Math.PI/6), detectedY - 10 * Math.sin(angle - Math.PI/6));
+            testCtx.lineTo(detectedX - 15 * Math.cos(angle - Math.PI/6), detectedY - 15 * Math.sin(angle - Math.PI/6));
             testCtx.moveTo(detectedX, detectedY);
-            testCtx.lineTo(detectedX - 10 * Math.cos(angle + Math.PI/6), detectedY - 10 * Math.sin(angle + Math.PI/6));
+            testCtx.lineTo(detectedX - 15 * Math.cos(angle + Math.PI/6), detectedY - 15 * Math.sin(angle + Math.PI/6));
             testCtx.stroke();
             
-            // Circles at expected and detected positions
-            testCtx.strokeStyle = '#ffc107';
-            testCtx.fillStyle = 'rgba(255, 193, 7, 0.2)';
+            // Dark circles at expected and detected positions
+            testCtx.strokeStyle = '#e67e00';
+            testCtx.fillStyle = 'rgba(230, 126, 0, 0.3)';
+            testCtx.lineWidth = 4;
             testCtx.beginPath();
-            testCtx.arc(expectedX, expectedY, 15, 0, 2 * Math.PI);
+            testCtx.arc(expectedX, expectedY, 18, 0, 2 * Math.PI);
             testCtx.fill();
             testCtx.stroke();
             
             testCtx.beginPath();
-            testCtx.arc(detectedX, detectedY, 15, 0, 2 * Math.PI);
+            testCtx.arc(detectedX, detectedY, 18, 0, 2 * Math.PI);
             testCtx.fill();
             testCtx.stroke();
             
-            // Add label
-            testCtx.fillStyle = '#ffc107';
-            testCtx.font = 'bold 12px Arial';
-            testCtx.fillText('MISALIGNED: ' + component.name, Math.max(expectedX, detectedX) + 20, Math.min(expectedY, detectedY) - 10);
+            // Add dark background for label
+            const labelX = Math.max(expectedX, detectedX) + 25;
+            const labelY = Math.min(expectedY, detectedY) - 20;
+            testCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            testCtx.fillRect(labelX, labelY, 160, 20);
+            
+            // Add white text label
+            testCtx.fillStyle = 'white';
+            testCtx.font = 'bold 14px Arial';
+            testCtx.fillText('MISALIGNED: ' + component.name, labelX + 5, labelY + 15);
             
         } else if (component.status === 'OK' && component.detected_location) {
-            // Green checkmark for OK components
+            // Dark green checkmark for OK components with better visibility
             const detectedX = component.detected_location[0] * testScaleX;
             const detectedY = component.detected_location[1] * testScaleY;
             
-            testCtx.strokeStyle = '#28a745';
-            testCtx.fillStyle = 'rgba(40, 167, 69, 0.2)';
-            testCtx.lineWidth = 3;
+            // Draw white background circle
+            testCtx.fillStyle = 'gray';
             testCtx.beginPath();
-            testCtx.arc(detectedX, detectedY, 15, 0, 2 * Math.PI);
+            testCtx.arc(detectedX, detectedY, 20, 0, 2 * Math.PI);
+            testCtx.fill();
+            
+            // Draw dark green circle
+            testCtx.strokeStyle = '#006600';
+            testCtx.fillStyle = 'rgba(0, 102, 0, 0.3)';
+            testCtx.lineWidth = 4;
+            testCtx.beginPath();
+            testCtx.arc(detectedX, detectedY, 18, 0, 2 * Math.PI);
             testCtx.fill();
             testCtx.stroke();
             
-            // Checkmark
-            testCtx.strokeStyle = '#28a745';
-            testCtx.lineWidth = 3;
+            // Thick dark green checkmark
+            testCtx.strokeStyle = '#006600';
+            testCtx.lineWidth = 5;
+            testCtx.lineCap = 'round';
             testCtx.beginPath();
-            testCtx.moveTo(detectedX - 8, detectedY);
-            testCtx.lineTo(detectedX - 2, detectedY + 6);
-            testCtx.lineTo(detectedX + 8, detectedY - 6);
+            testCtx.moveTo(detectedX - 10, detectedY);
+            testCtx.lineTo(detectedX - 3, detectedY + 7);
+            testCtx.lineTo(detectedX + 10, detectedY - 7);
             testCtx.stroke();
         }
     });

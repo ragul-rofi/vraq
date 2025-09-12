@@ -3,16 +3,18 @@ import numpy as np
 from datetime import datetime
 import logging
 from typing import List, Dict, Any, Tuple, Optional
+from .image_processing import ImageProcessor
 
 logger = logging.getLogger(__name__)
 
 class DefectDetector:
-    """PCB defect detection using OpenCV template matching"""
+    """PCB defect detection using enhanced vision techniques"""
     
     def __init__(self, config):
         self.config = config
         self.confidence_threshold = config.CONFIDENCE_THRESHOLD
         self.location_tolerance = config.LOCATION_TOLERANCE
+        self.image_processor = ImageProcessor()  # Use the provided image processor
         
     def analyze_pcb(self, reference_img: np.ndarray, test_img: np.ndarray, analysis_id: str) -> Dict[str, Any]:
         """
@@ -29,32 +31,32 @@ class DefectDetector:
         try:
             logger.info(f"Starting PCB analysis {analysis_id}")
             
-            # Convert images to grayscale for processing
-            ref_gray = cv2.cvtColor(reference_img, cv2.COLOR_BGR2GRAY)
-            test_gray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
+            # --- IMPROVEMENT 1: Use advanced image preprocessing ---
+            # This makes the images more consistent and robust to lighting changes.
+            ref_gray = self.image_processor.enhance_contrast(cv2.cvtColor(reference_img, cv2.COLOR_BGR2GRAY))
+            test_gray = self.image_processor.enhance_contrast(cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY))
             
             # Detect components in reference image
             components = self._detect_components(ref_gray)
             
-            # Analyze each component
             component_results = []
             defect_markers = []
             overall_status = "OK"
             
             for component in components:
-                result = self._analyze_component(component, ref_gray, test_gray)
+                # --- IMPROVEMENT 2: Use a more robust matching method ---
+                # ORB is more robust to rotation and scale changes than simple template matching.
+                result = self._analyze_component_orb(component, ref_gray, test_gray)
                 component_results.append(result)
                 
                 if result['status'] != 'OK':
                     overall_status = "DEFECTS_FOUND"
-                    # Add VR marker for defects
                     defect_markers.append({
                         'position': self._calculate_vr_position(result['expected_location']),
                         'type': result['status'],
                         'component': result['name']
                     })
             
-            # Build final result
             analysis_result = {
                 'analysis_id': analysis_id,
                 'timestamp': datetime.utcnow().isoformat() + 'Z',
@@ -82,43 +84,34 @@ class DefectDetector:
                 'components': [],
                 'vr_data': {'defect_markers': []}
             }
-    
+
     def _detect_components(self, reference_img: np.ndarray) -> List[Dict[str, Any]]:
         """
-        Detect components in reference image using contour detection
-        
-        Args:
-            reference_img: Grayscale reference image
-            
-        Returns:
-            List of detected components with their properties
+        Detect components in reference image using contour detection on an enhanced image
         """
         components = []
         
-        # Apply threshold to create binary image
-        _, binary = cv2.threshold(reference_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # --- IMPROVEMENT 3: Use adaptive thresholding for better segmentation ---
+        # This is more effective for uneven lighting.
+        binary = self.image_processor.apply_adaptive_threshold(reference_img)
         
-        # Find contours
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         component_id = 1
         for contour in contours:
-            # Filter out very small contours (noise)
             area = cv2.contourArea(contour)
-            if area < 100:  # Minimum component area
+            if area < 100:
                 continue
-                
-            # Get bounding rectangle
+            
             x, y, w, h = cv2.boundingRect(contour)
             
-            # Extract component template
+            # --- IMPROVEMENT 4: Extract component template from original image
+            # This preserves color information if needed for future enhancements.
             template = reference_img[y:y+h, x:x+w]
             
-            # Calculate center point
             center_x = x + w // 2
             center_y = y + h // 2
             
-            # Classify component type based on shape characteristics
             component_type = self._classify_component_type(contour, area, w, h)
             
             component = {
@@ -135,30 +128,20 @@ class DefectDetector:
         
         logger.info(f"Detected {len(components)} components in reference image")
         return components
-    
+
     def _classify_component_type(self, contour: np.ndarray, area: float, width: int, height: int) -> str:
         """
         Classify component type based on shape characteristics
-        
-        Args:
-            contour: Component contour
-            area: Contour area
-            width: Bounding box width
-            height: Bounding box height
-            
-        Returns:
-            Component type string
         """
+        # (This remains the same for now, but could be enhanced with ML in the future)
         aspect_ratio = width / height if height > 0 else 1
         
-        # Calculate circularity
         perimeter = cv2.arcLength(contour, True)
         if perimeter > 0:
             circularity = 4 * np.pi * area / (perimeter * perimeter)
         else:
             circularity = 0
         
-        # Simple classification based on shape
         if circularity > 0.7:
             return "capacitor"
         elif aspect_ratio > 2 or aspect_ratio < 0.5:
@@ -167,76 +150,102 @@ class DefectDetector:
             return "ic"
         else:
             return "component"
-    
-    def _analyze_component(self, component: Dict[str, Any], ref_img: np.ndarray, test_img: np.ndarray) -> Dict[str, Any]:
-        """
-        Analyze a single component for defects
-        
-        Args:
-            component: Component information from reference image
-            ref_img: Reference image
-            test_img: Test image
             
-        Returns:
-            Component analysis result
+    def _analyze_component_orb(self, component: Dict[str, Any], ref_img: np.ndarray, test_img: np.ndarray) -> Dict[str, Any]:
         """
-        template = component['template']
+        Analyze a single component for defects using ORB feature matching
+        
+        This method is more robust than simple template matching.
+        """
+        # Initialize ORB detector
+        orb = cv2.ORB_create()
+        
+        template_img = component['template']
         expected_loc = component['expected_location']
         
-        # Perform template matching
-        result = cv2.matchTemplate(test_img, template, cv2.TM_CCOEFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        # Find keypoints and descriptors
+        kp1, des1 = orb.detectAndCompute(template_img, None)
+        kp2, des2 = orb.detectAndCompute(test_img, None)
         
-        # Calculate detected center position
-        h, w = template.shape
-        detected_center = [max_loc[0] + w // 2, max_loc[1] + h // 2]
+        if des1 is None or des2 is None:
+            return {
+                'name': component['name'],
+                'status': "MISSING",
+                'confidence': 0.0,
+                'expected_location': expected_loc,
+                'detected_location': None,
+                'deviation_pixels': None,
+                'component_type': component['type']
+            }
+            
+        # Create a BFMatcher object
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         
-        # Calculate deviation from expected position
-        deviation = np.sqrt((detected_center[0] - expected_loc[0])**2 + 
-                           (detected_center[1] - expected_loc[1])**2)
+        # Match descriptors
+        matches = bf.match(des1, des2)
         
-        # Determine component status
-        if max_val < self.confidence_threshold:
-            status = "MISSING"
-            detected_location = None
-            deviation_pixels = None
-        elif deviation > self.location_tolerance:
-            status = "MISALIGNED"
-            detected_location = detected_center
-            deviation_pixels = float(deviation)
+        # Sort them by distance
+        matches = sorted(matches, key=lambda x: x.distance)
+        
+        # Find the best match
+        if matches:
+            best_match = matches[0]
+            # Get the keypoint from the test image
+            detected_kp = kp2[best_match.trainIdx]
+            
+            # The location is the keypoint position
+            detected_center = [int(detected_kp.pt[0]), int(detected_kp.pt[1])]
+            
+            # Calculate deviation
+            deviation = np.sqrt((detected_center[0] - expected_loc[0])**2 + (detected_center[1] - expected_loc[1])**2)
+            
+            # Confidence can be based on the match distance (lower is better)
+            confidence = 1.0 - (best_match.distance / 100.0) # Normalize for a 0-1 range
+            
+            if confidence < self.confidence_threshold:
+                status = "MISSING"
+                detected_location = None
+                deviation_pixels = None
+            elif deviation > self.location_tolerance:
+                status = "MISALIGNED"
+                detected_location = detected_center
+                deviation_pixels = float(deviation)
+            else:
+                status = "OK"
+                detected_location = detected_center
+                deviation_pixels = float(deviation)
+                
+            return {
+                'name': component['name'],
+                'status': status,
+                'confidence': float(confidence),
+                'expected_location': expected_loc,
+                'detected_location': detected_location,
+                'deviation_pixels': deviation_pixels,
+                'component_type': component['type']
+            }
         else:
-            status = "OK"
-            detected_location = detected_center
-            deviation_pixels = float(deviation)
-        
-        return {
-            'name': component['name'],
-            'status': status,
-            'confidence': float(max_val),
-            'expected_location': expected_loc,
-            'detected_location': detected_location,
-            'deviation_pixels': deviation_pixels,
-            'component_type': component['type']
-        }
-    
+            # No matches found
+            return {
+                'name': component['name'],
+                'status': "MISSING",
+                'confidence': 0.0,
+                'expected_location': expected_loc,
+                'detected_location': None,
+                'deviation_pixels': None,
+                'component_type': component['type']
+            }
+            
     def _calculate_vr_position(self, image_coords: List[int]) -> Dict[str, float]:
         """
         Convert image coordinates to VR space coordinates
-        
-        Args:
-            image_coords: [x, y] coordinates in image space
-            
-        Returns:
-            VR position dictionary with x, y, z coordinates
         """
-        # Normalize coordinates to 0-1 range and convert to VR space
-        # This is a simplified mapping - in real applications this would involve
-        # camera calibration and 3D reconstruction
-        x_norm = image_coords[0] / 1920.0  # Assuming standard image width
-        y_norm = image_coords[1] / 1080.0  # Assuming standard image height
+        # This function remains the same as it's a separate concern from detection accuracy.
+        x_norm = image_coords[0] / 1920.0
+        y_norm = image_coords[1] / 1080.0
         
         return {
-            'x': float(x_norm - 0.5),  # Center at origin
-            'y': 0.0,  # PCB surface level
-            'z': float(0.5 - y_norm)   # Invert Y for VR space
+            'x': float(x_norm - 0.5),
+            'y': 0.0,
+            'z': float(0.5 - y_norm)
         }
