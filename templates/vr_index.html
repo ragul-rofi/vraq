@@ -133,12 +133,24 @@
                      material="color: #ffc107; emissive: #ffc107; emissiveIntensity: 0.4; roughness: 0.1; metalness: 0.8"></a-mixin>
         </a-assets>
 
+         <!-- <a-assets>
+            <a-asset-item id="pcbModel" src="D:\ABB-Hackathon\VR\VRAQVisBackend\assets\models\circuit_board.glb"></a-asset-item>
+        </a-assets>
+
+        <a-entity gltf-model="#pcbModel"
+            position="0 0 -3"  
+            rotation="0 45 0"   
+            scale="0.5 0.5 0.5" 
+            shadow="cast: true; receive: true">
+        </a-entity> -->
+
         <!-- Environment -->
-        <a-entity environment="preset: goland; 
+        <a-entity environment="preset: starry; 
                               skyColor: #0a0a0a; 
                               horizonColor: #1a1a2e;
                               lighting: distant;
-                              lightPosition: 0 10 -5"></a-entity>
+                              lightPosition: 0 10 -5">
+                            </a-entity>
 
         <!-- Lighting Setup -->
         <a-light type="ambient" color="#404040" intensity="0.3"></a-light>
@@ -157,41 +169,53 @@
         <a-entity id="pcb-container" position="0 1.5 -3">
             <!-- Main PCB Board -->
             <a-box id="pcb-board"
-                   width="4" height="0.1" depth="2.5"
+                   width="0.4" height="0.01" depth="0.25"
                    material="color: #2e7d32; roughness: 0.8; metalness: 0.2"
                    shadow="cast: true; receive: false"
                    pcb-visualizer="apiUrl: /api/analyze"
                    rotation="35 0 0">
                 
                 <!-- PCB Grid Pattern -->
-                <a-entity id="pcb-grid" position="0 0.051 0">
+                <!-- <a-entity id="pcb-grid" position="0 1.5 -1"> -->
                     <!-- Grid lines will be added programmatically -->
-                </a-entity>
+                <!-- </a-entity> -->
                 
                 <!-- Component Mounting Areas -->
-                <a-entity id="component-areas">
+                <!-- <a-entity id="component-areas"> -->
                     <!-- Component areas will be added based on analysis -->
-                </a-entity>
+                <!-- </a-entity> -->
                 
                 <!-- Defect Markers Container -->
-                <a-entity id="defect-markers">
+                <!-- <a-entity id="defect-markers"> -->
                     <!-- Defect markers will be added here dynamically -->
-                </a-entity>
+                <!-- </a-entity> -->
             </a-box>
+
+
+            <a-box id="a-box"
+                   width="10" height="10" depth="10"
+                   material="color: #AA0000; roughness: 0.8; metalness: 0.2"
+                   shadow="cast: true; receive: false"
+                   pcb-visualizer="apiUrl: /api/analyze"
+                   rotation="0 0 0">
+                
+            </a-box>
+
+
             
             <!-- PCB Label -->
             <a-text value="PCB Defect Analysis - VR View" 
-                    position="0 3.0 1.5" 
+                    position="0 5 1.5" 
                     align="center" 
                     color="#ffffff"
-                    scale="2 2 2"
+                    scale="0.7 0.7 0.7"
                         > </a-text>
         </a-entity>
 
          <!-- VR Camera Rig -->
 <a-entity id="rig" 
           movement-controls="fly: true; acceleration: 50" 
-          position="0 1.6 2"
+          position="0 1 2"
           auto-detect-controllers> <!-- Auto-detect controllers -->
 
     <!-- VR Camera -->
@@ -313,7 +337,7 @@
                     class="clickable teleport-area"></a-cylinder> -->
 
         <!-- Ground Plane -->
-        <a-plane position="0 0 0" 
+        <a-plane position="0 -10 0" 
                  rotation="-90 0 0" 
                  width="20" height="20" 
                  material="color: #1a1a1a; roughness: 0.9"

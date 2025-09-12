@@ -90,15 +90,15 @@ AFRAME.registerComponent('pcb-visualizer', {
             gridContainer.removeChild(gridContainer.firstChild);
         }
         
-        const pcbWidth = 4;
-        const pcbDepth = 2.5;
-        const gridSpacing = 0.2;
+        const pcbWidth = 0.4;
+        const pcbDepth = 0.25;
+        const gridSpacing = 0.01;
         
         // Create grid lines
         for (let x = -pcbWidth/2; x <= pcbWidth/2; x += gridSpacing) {
             const line = document.createElement('a-box');
-            line.setAttribute('width', 0.005);
-            line.setAttribute('height', 0.001);
+            line.setAttribute('width', 0.0005);
+            line.setAttribute('height', 0.0001);
             line.setAttribute('depth', pcbDepth);
             line.setAttribute('position', `${x} 0 0`);
             line.setAttribute('material', {
