@@ -21,9 +21,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vr-style.css') }}">
 
+
+    	
     <!-- Additional A-Frame components for better controller support -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-super-hands-component@3.1.0/dist/super-hands.min.js"></script>
     <script src="https://unpkg.com/aframe-teleport-controls@0.3.0/dist/aframe-teleport-controls.min.js"></script>
+
+
 </head>
 <body>
     <!-- Loading Screen -->
@@ -102,6 +106,7 @@
             </div>
         </div>
     </div>
+
     <!-- A-Frame VR Scene -->
     <a-scene 
         id="vr-scene"
@@ -150,33 +155,57 @@
 
         <!-- PCB Board Base -->
         <a-entity id="pcb-container" position="0 1.5 -3">
+            <!-- Main PCB Board -->
             <a-box id="pcb-board"
                    width="4" height="0.1" depth="2.5"
                    material="color: #2e7d32; roughness: 0.8; metalness: 0.2"
                    shadow="cast: true; receive: true"
                    pcb-visualizer="apiUrl: /api">
-                <a-entity id="pcb-grid" position="0 0.051 0"></a-entity>
-                <a-entity id="component-areas"></a-entity>
-                <a-entity id="defect-markers"></a-entity>
+                
+                <!-- PCB Grid Pattern -->
+                <a-entity id="pcb-grid" position="0 0.051 0">
+                    Grid lines will be added programmatically
+                </a-entity>
+                
+                <!-- Component Mounting Areas -->
+                <a-entity id="component-areas">
+                    <!-- Component areas will be added based on analysis -->
+                </a-entity>
+                
+                <!-- Defect Markers Container -->
+                <a-entity id="defect-markers">
+                    <!-- Defect markers will be added here dynamically -->
+                </a-entity>
             </a-box>
+            
+            <!-- PCB Label -->
             <a-text value="PCB Defect Analysis - VR View" 
                     position="0 3.0 1.5" 
                     align="center" 
                     color="#ffffff"
-                    scale="2 2 2"></a-text>
+                    scale="2 2 2"
+                        > </a-text>
         </a-entity>
 
-        <!-- ✅ Updated Camera Rig for Meta Quest -->
+         <!-- VR Camera Rig -->
         <a-entity id="rig" 
-                  position="0 1.6 2"
-                  movement-controls="constrainToNavMesh: false; fly: false; speed: 0.15">
+                movement-controls="fly: true; 
+                acceleration: 50" 
+                position="0 1.6 2">
             
             <!-- VR Camera -->
             <a-camera id="camera" 
-                      look-controls
-                      wasd-controls="enabled: false"
-                      fov="60">
-                <!-- Desktop Cursor -->
+            look-controls="pointerLockEnabled: true" 
+            wasd-controls="fly: true; 
+            acceleration: 20" fov="60">
+                
+                <!-- Laser Pointer for VR -->
+                <a-entity laser-controls="hand: right" 
+                          raycaster="objects: .clickable; far: 30"
+                          line="color: #118A7E; opacity: 0.75"
+                          cursor="rayOrigin: mouse"></a-entity>
+                
+                <!-- Cursor for Desktop -->
                 <a-cursor geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
                           material="color: #118A7E; shader: flat"
                           position="0 0 -1"
@@ -185,13 +214,17 @@
                           animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150"></a-cursor>
             </a-camera>
 
-            <!-- Left Controller -->
+            <!-- Hand Controllers (for VR) - Updated for Meta Quest -->
             <a-entity id="leftHand" 
                       oculus-touch-controls="hand: left"
+                      teleport-controls="cameraRig: #rig; teleportOrigin: #camera; button: trigger; 
+                      type: parabolic; collisionEntities: .ground; hitColor: #118A7E; 
+                      landingNormal: 0 1 0"
                       laser-controls="hand: left"
-                      teleport-controls="cameraRig: #rig; teleportOrigin: #camera; button: trigger; type: parabolic; collisionEntities: .ground; hitColor: #118A7E; landingNormal: 0 1 0"
                       raycaster="objects: .clickable; far: 30"
-                      super-hands>
+                      super-hands="colliderEvent: raycaster-intersection; 
+                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
+                      colliderEndEventProperty: els">
                 <a-entity class="controller-cursor"
                           cursor="fuse: false; rayOrigin: entity"
                           raycaster="far: 30; objects: .clickable"
@@ -201,12 +234,13 @@
                 </a-entity>
             </a-entity>
             
-            <!-- Right Controller -->
             <a-entity id="rightHand" 
                       oculus-touch-controls="hand: right"
                       laser-controls="hand: right"
                       raycaster="objects: .clickable; far: 30"
-                      super-hands>
+                      super-hands="colliderEvent: raycaster-intersection; 
+                      colliderEventProperty: els; colliderEndEvent: raycaster-intersection-cleared; 
+                      colliderEndEventProperty: els">
                 <a-entity class="controller-cursor"
                           cursor="fuse: false; rayOrigin: entity"
                           raycaster="far: 30; objects: .clickable"
@@ -216,11 +250,84 @@
                 </a-entity>
             </a-entity>
         </a-entity>
+        
 
         <!-- UI Panels in VR Space -->
         <a-entity id="vr-ui-container" position="0 2.5 -2">
-            <!-- (unchanged panels code) -->
+            <!-- Information Display Panel -->
+            <a-plane id="vr-info-panel"
+                    position="-3 0 0"
+                    width="2.5" height="2"
+                    material="color: #1a1a2e; opacity: 0.9; transparent: true">
+                
+                <!-- Text as child, wrapped neatly -->
+                <a-entity text="value: Welcome to VRAQ\nUpload PCB images to begin analysis;
+                                color: #ffffff;
+                                align: center;
+                                width: 3.0;        
+                                wrapCount: 28" 
+                                position="0 0 0.02"
+                                radius="1.5">
+                </a-entity>
+            </a-plane>
+
+            <!-- Control Panel -->
+            <a-plane id="vr-control-panel"
+                    position="3 0 0"
+                    width="2.5" height="2" 
+                    material="color: #2e2e2e; opacity: 0.9; transparent: true">
+
+                <!-- Reset Button -->
+                <a-entity class="clickable" position="0 0.5 0.01" id="vr-reset-btn">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #118A7E"></a-box>
+                    <a-text value="Reset View"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
+
+                <!-- Export Button -->
+                <a-entity class="clickable" position="0 0 0.01" id="vr-export-btn">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #666666"></a-box>
+                    <a-text value="Export Results"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
+
+                <!-- Toggle Markers Button -->
+                <a-entity class="clickable" position="0 -0.5 0.01"  id="vr-toggle-markers-btn">
+                    <a-box width="1.5" height="0.3" depth="0.02"
+                        material="color: #ff9800"></a-box>
+                    <a-text value="Toggle Markers"
+                            align="center"
+                            color="#ffffff"
+                            width="4"
+                            position="0 0 0.02"></a-text>
+                </a-entity>
+            </a-plane>
         </a-entity>
+
+        <!-- Teleportation Areas -->
+        <!-- <a-cylinder id="teleport-1" 
+                    position="2 0.01 -1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder>
+        <a-cylinder id="teleport-2" 
+                    position="-2 0.01 -1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder>
+        <a-cylinder id="teleport-3" 
+                    position="0 0.01 1" 
+                    radius="0.5" height="0.02" 
+                    material="color: #118A7E; opacity: 0.6"
+                    class="clickable teleport-area"></a-cylinder> -->
 
         <!-- Ground Plane -->
         <a-plane position="0 0 0" 
@@ -230,7 +337,6 @@
                  shadow="receive: true"
                  class="ground"></a-plane>
     </a-scene>
-
 
     <!-- VR Entry UI -->
     <div id="vr-entry-ui" class="vr-entry">
