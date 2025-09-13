@@ -90,19 +90,19 @@ AFRAME.registerComponent('pcb-visualizer', {
             gridContainer.removeChild(gridContainer.firstChild);
         }
         
-        const pcbWidth = 0.4;
-        const pcbDepth = 0.25;
-        const gridSpacing = 0.01;
+        const pcbWidth = 4;
+        const pcbDepth = 2.5;
+        const gridSpacing = 0.1;
         
         // Create grid lines
         for (let x = -pcbWidth/2; x <= pcbWidth/2; x += gridSpacing) {
             const line = document.createElement('a-box');
-            line.setAttribute('width', 0.0005);
-            line.setAttribute('height', 0.0001);
+            line.setAttribute('width', 0.005);
+            line.setAttribute('height', 0.001);
             line.setAttribute('depth', pcbDepth);
             line.setAttribute('position', `${x} 0 0`);
             line.setAttribute('material', {
-                color: '#1b5e20',
+                color: '#000000ff',
                 opacity: 0.3,
                 transparent: true
             });
@@ -116,7 +116,7 @@ AFRAME.registerComponent('pcb-visualizer', {
             line.setAttribute('depth', 0.005);
             line.setAttribute('position', `0 0 ${z}`);
             line.setAttribute('material', {
-                color: '#1b5e20',
+                color: '#7c3232ff',
                 opacity: 0.3,
                 transparent: true
             });
@@ -136,8 +136,8 @@ AFRAME.registerComponent('pcb-visualizer', {
             marker.setAttribute('radius', 0.02);
             marker.setAttribute('position', `${corner.x} 0.01 ${corner.z}`);
             marker.setAttribute('material', {
-                color: '#4caf50',
-                emissive: '#4caf50',
+                color: '#022e0dff',
+                emissive: '#022e0dff',
                 emissiveIntensity: 0.3
             });
             gridContainer.appendChild(marker);
@@ -178,7 +178,7 @@ AFRAME.registerComponent('pcb-visualizer', {
             const color = this.getComponentTypeColor(area.type);
             areaEl.setAttribute('material', {
                 color: color,
-                opacity: 0.2,
+                opacity: 1,
                 transparent: true,
                 roughness: 0.8
             });
